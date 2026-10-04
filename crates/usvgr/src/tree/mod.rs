@@ -988,6 +988,17 @@ impl Node {
         }
     }
 
+    /// The `data-fframes-*` attributes of the element this node came from.
+    pub fn fframes_data(&self) -> &FframesData {
+        match self {
+            Node::Group(ref e) => &e.fframes_data,
+            Node::Path(ref e) => &e.fframes_data,
+            Node::Image(ref e) => &e.fframes_data,
+            Node::Text(ref e) => &e.fframes_data,
+            Node::FastShape(ref e) => &e.path.fframes_data,
+        }
+    }
+
     /// Returns node's absolute transform.
     ///
     /// If a current node doesn't support transformation - a default
@@ -1102,6 +1113,44 @@ impl Node {
     }
 }
 
+/// `data-fframes-*` attributes of the element a node came from, without the prefix:
+/// `data-fframes-inspect="allow-offcanvas"` is `("inspect", "allow-offcanvas")`.
+///
+/// Rendering ignores them and no hash includes them. They carry hints from the author of
+/// the SVG (or of an `svgr!` tree) to the code that walks the tree, e.g. fframes' `inspect`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FframesData(Option<Arc<[(Box<str>, Box<str>)]>>);
+
+impl FframesData {
+    /// Attribute name prefix.
+    pub const PREFIX: &'static str = "data-fframes-";
+
+    pub(crate) fn from_pairs(pairs: Vec<(Box<str>, Box<str>)>) -> Self {
+        if pairs.is_empty() {
+            Self(None)
+        } else {
+            Self(Some(pairs.into()))
+        }
+    }
+
+    /// The value of `data-fframes-{key}`.
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.iter().find(|(k, _)| *k == key).map(|(_, v)| v)
+    }
+
+    /// All attributes as `(key, value)`, in document order.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.0
+            .iter()
+            .flat_map(|pairs| pairs.iter().map(|(k, v)| (&**k, &**v)))
+    }
+
+    /// `true` when the element has no `data-fframes-*` attribute.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_none()
+    }
+}
+
 /// A group container.
 ///
 /// The preprocessor will remove all groups that don't impact rendering.
@@ -1111,6 +1160,7 @@ impl Node {
 #[derive(Clone, Debug)]
 pub struct Group {
     pub(crate) id: String,
+    pub(crate) fframes_data: FframesData,
     pub(crate) transform: Transform,
     pub(crate) abs_transform: Transform,
     pub(crate) opacity: Opacity,
@@ -1228,6 +1278,7 @@ impl Group {
         let dummy = Rect::from_xywh(0.0, 0.0, 0.0, 0.0).unwrap();
         Group {
             id: String::new(),
+            fframes_data: FframesData::default(),
             transform: Transform::default(),
             abs_transform: Transform::default(),
             opacity: Opacity::ONE,
@@ -1255,6 +1306,11 @@ impl Group {
     /// Can be empty.
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The `data-fframes-*` attributes of the element this node came from.
+    pub fn fframes_data(&self) -> &FframesData {
+        &self.fframes_data
     }
 
     /// Element's transform.
@@ -1590,6 +1646,7 @@ fn round_rect_outline(
 #[derive(Clone, Debug)]
 pub struct Path {
     pub(crate) id: String,
+    pub(crate) fframes_data: FframesData,
     pub(crate) visibility: Visibility,
     pub(crate) fill: Option<Fill>,
     pub(crate) stroke: Option<Stroke>,
@@ -1682,6 +1739,7 @@ impl Path {
             stroke_bounding_box,
             abs_stroke_bounding_box,
             static_hash,
+            fframes_data: FframesData::default(),
         })
     }
 
@@ -1739,6 +1797,7 @@ impl Path {
             stroke_bounding_box,
             abs_stroke_bounding_box,
             static_hash,
+            fframes_data: FframesData::default(),
         })
     }
 
@@ -1749,6 +1808,11 @@ impl Path {
     /// Can be empty.
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The `data-fframes-*` attributes of the element this node came from.
+    pub fn fframes_data(&self) -> &FframesData {
+        &self.fframes_data
     }
 
     /// Element visibility.
@@ -1889,6 +1953,7 @@ impl std::fmt::Debug for ImageKind {
 #[derive(Clone, Debug)]
 pub struct Image {
     pub(crate) id: String,
+    pub(crate) fframes_data: FframesData,
     pub(crate) visibility: Visibility,
     pub(crate) view_box: ViewBox,
     pub(crate) rendering_mode: ImageRendering,
@@ -1919,6 +1984,11 @@ impl Image {
     /// Can be empty.
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The `data-fframes-*` attributes of the element this node came from.
+    pub fn fframes_data(&self) -> &FframesData {
+        &self.fframes_data
     }
 
     /// Element visibility.

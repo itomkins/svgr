@@ -43,6 +43,7 @@ impl<'input> Document<'input> {
             children: None,
             kind,
             static_hash,
+            fframes_data: crate::FframesData::default(),
         });
 
         let last_child_id = self.nodes[parent_id.get_usize()].children.map(|(_, id)| id);
@@ -94,6 +95,7 @@ fn parse<'input>(xml: &roxmltree::Document<'input>) -> Result<Document<'input>, 
         children: None,
         kind: NodeKind::Root,
         static_hash: None,
+        fframes_data: crate::FframesData::default(),
     });
 
     let style_sheet = resolve_css(xml);
@@ -234,12 +236,18 @@ pub(crate) fn parse_svg_element<'input>(
     doc: &mut Document<'input>,
 ) -> Result<NodeId, Error> {
     let attrs_start_idx = doc.attrs.len();
+    let mut fframes_data = Vec::new();
 
     // Copy presentational attributes first.
     for attr in xml_node.attributes() {
         match attr.namespace() {
             None | Some(SVG_NS) | Some(XLINK_NS) | Some(XML_NAMESPACE_NS) => {}
             _ => continue,
+        }
+
+        if let Some(key) = attr.name().strip_prefix(crate::FframesData::PREFIX) {
+            fframes_data.push((Box::from(key), Box::from(attr.value())));
+            continue;
         }
 
         let aid = match AId::from_str(attr.name()) {
@@ -367,6 +375,7 @@ pub(crate) fn parse_svg_element<'input>(
             attributes: ShortRange::new(attrs_start_idx as u32, doc.attrs.len() as u32),
         },
     );
+    doc.nodes[node_id.get_usize()].fframes_data = crate::FframesData::from_pairs(fframes_data);
 
     Ok(node_id)
 }
@@ -788,6 +797,7 @@ impl<'a> TryFrom<&'a NestedSvgDocument<'a>> for Document<'a> {
             children: None,
             kind: NodeKind::Root,
             static_hash: None,
+            fframes_data: crate::FframesData::default(),
         });
 
         let parent_id = doc.root().id;
@@ -922,6 +932,7 @@ fn append_nested_element<'a>(
             },
             node.static_hash,
         );
+        doc.nodes[node_id.get_usize()].fframes_data = nested_fframes_data(node);
 
         resolve_nested_use_element(doc, nested_doc, node_id, node, use_origin, attributes);
     } else {
@@ -933,9 +944,19 @@ fn append_nested_element<'a>(
             },
             node.static_hash,
         );
+        doc.nodes[node_id.get_usize()].fframes_data = nested_fframes_data(node);
 
         flatten_nested_svg_tree(doc, nested_doc, node_id, &node.children)
     }
+}
+
+fn nested_fframes_data(node: &NestedNodeData) -> crate::FframesData {
+    crate::FframesData::from_pairs(
+        node.data
+            .iter()
+            .map(|(key, value)| (Box::from(*key), value.to_string().into_boxed_str()))
+            .collect(),
+    )
 }
 
 fn resolve_linked_node<'a>(
