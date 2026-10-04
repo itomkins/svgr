@@ -17,6 +17,7 @@ color-rendering
 cx
 cy
 d
+data-fframes-inspect
 diffuseConstant
 direction
 display

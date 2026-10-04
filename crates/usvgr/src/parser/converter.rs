@@ -654,8 +654,16 @@ pub(crate) fn convert_group(
 
     let abs_transform = parent.abs_transform.pre_concat(transform);
     let dummy = Rect::from_xywh(0.0, 0.0, 0.0, 0.0).unwrap();
+    let fframes_inspect = if is_g_or_use {
+        node.attribute::<&str>(AId::DataFframesInspect)
+            .unwrap_or_default()
+            .to_string()
+    } else {
+        String::new()
+    };
     let mut g = Group {
         id,
+        fframes_inspect,
         transform,
         abs_transform,
         opacity,

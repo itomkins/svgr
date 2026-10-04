@@ -1111,6 +1111,8 @@ impl Node {
 #[derive(Clone, Debug)]
 pub struct Group {
     pub(crate) id: String,
+    /// The `data-fframes-inspect` attribute of a `g` or `use` element.
+    pub(crate) fframes_inspect: String,
     pub(crate) transform: Transform,
     pub(crate) abs_transform: Transform,
     pub(crate) opacity: Opacity,
@@ -1228,6 +1230,7 @@ impl Group {
         let dummy = Rect::from_xywh(0.0, 0.0, 0.0, 0.0).unwrap();
         Group {
             id: String::new(),
+            fframes_inspect: String::new(),
             transform: Transform::default(),
             abs_transform: Transform::default(),
             opacity: Opacity::ONE,
@@ -1255,6 +1258,13 @@ impl Group {
     /// Can be empty.
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The `data-fframes-inspect` attribute of the `g` or `use` element this group came
+    /// from, empty when it is not set. Rendering ignores it; fframes reads it to adjust the
+    /// checks of `inspect` for everything inside the group (`allow-offcanvas`).
+    pub fn fframes_inspect(&self) -> &str {
+        &self.fframes_inspect
     }
 
     /// Element's transform.

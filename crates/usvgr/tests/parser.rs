@@ -98,3 +98,28 @@ fn tree_is_send_and_sync() {
     fn ensure_send_and_sync<T: Send + Sync>() {}
     ensure_send_and_sync::<usvgr::Tree>();
 }
+
+#[test]
+fn keeps_data_fframes_inspect_on_groups() {
+    let svg = "
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'>
+        <g data-fframes-inspect='allow-offcanvas'>
+            <rect width='10' height='10'/>
+        </g>
+        <g><rect width='10' height='10'/></g>
+    </svg>
+    ";
+
+    let fontdb = usvgr::fontdb::Database::new();
+    let tree = usvgr::Tree::from_str(&svg, &usvgr::Options::default(), &fontdb).unwrap();
+    let groups: Vec<&str> = tree
+        .root()
+        .children()
+        .iter()
+        .filter_map(|node| match node {
+            usvgr::Node::Group(group) => Some(group.fframes_inspect()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(groups, vec!["allow-offcanvas", ""]);
+}
