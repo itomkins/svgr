@@ -454,6 +454,11 @@ fn resolve_font_weight(node: SvgNode) -> u16 {
     let mut weight = 400;
     for n in nodes.iter().rev().skip(1) {
         // skip Root
+        // A number set from code has no text: read the number (CSS allows 1 to 1000).
+        if let Some(SvgAttributeValueRef::Float(number, _)) = n.attribute_value(AId::FontWeight) {
+            weight = number.round().clamp(1.0, 1000.0) as usize;
+            continue;
+        }
         weight = match n.attribute(AId::FontWeight).unwrap_or("") {
             "normal" => 400,
             "bold" => 700,
