@@ -221,6 +221,44 @@ mod numbers_set_from_code {
         });
     }
 
+    /// A parent `<text>` with `parent` weight and a `<tspan>` with `child` weight.
+    fn nested_weights(
+        parent: SvgAttributeValue<'static>,
+        child: SvgAttributeValue<'static>,
+    ) -> NestedSvgDocument<'static> {
+        svg(vec![el(
+            EId::Text,
+            vec![
+                (AId::X, s("10")),
+                (AId::Y, s("60")),
+                (AId::FontFamily, s("Noto Sans")),
+                (AId::FontSize, s("40")),
+                (AId::FontWeight, parent),
+            ],
+            vec![el(
+                EId::Tspan,
+                vec![(AId::FontWeight, child)],
+                vec![text("Ab")],
+            )],
+        )])
+    }
+
+    #[test]
+    fn font_weight_not_a_number_keeps_the_inherited_weight() {
+        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert_eq!(
+                written(&nested_weights(s("700"), SvgAttributeValue::from(invalid))),
+                written(&nested_weights(s("700"), s("invalid"))),
+            );
+        }
+    }
+
+    #[test]
+    fn font_weight_lighter_than_a_small_number() {
+        let doc = nested_weights(SvgAttributeValue::from(1.0), s("lighter"));
+        assert!(written(&doc).contains(r#"font-weight="100""#));
+    }
+
     #[test]
     fn text_rotate() {
         same_as_written(20.0, "20", r#"rotate="20"#, |v| label(AId::Rotate, v));
